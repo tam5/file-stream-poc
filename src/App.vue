@@ -1,19 +1,16 @@
 <template>
   <div id="app" class="h-full container mx-auto">
     <Uploader />
-    <Monitors class="mt-24" />
   </div>
 </template>
 
 <script>
 import Uploader from './components/Uploader.vue'
-import Monitors from './components/Monitors.vue'
 
 export default {
   name: 'app',
   components: {
     Uploader,
-    Monitors
   }
 }
 </script>
