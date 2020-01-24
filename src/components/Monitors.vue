@@ -19,6 +19,8 @@
 </template>
 
 <script>
+ import { mb } from '@/utils'
+
  export default {
      name: 'Monitors',
 
@@ -32,7 +34,7 @@
 
      methods: {
          mb(bytes) {
-             return bytes / 1024 / 1024
+             return mb(bytes)
          }
      },
 
