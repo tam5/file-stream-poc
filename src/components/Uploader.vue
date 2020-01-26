@@ -1,5 +1,5 @@
 <template>
-    <div class="hello">
+    <div>
         <div class="pt-24">
             <h1 class="text-3xl">Hi, upload a file to test things out...</h1>
 
@@ -10,75 +10,81 @@
             <input ref="input" hidden type="file" />
         </div>
 
-        <transition name="fade">
-            <div class="mt-16 w-1/4 mx-auto" v-if="file">
-                <h2 class="text-xl">File Info</h2>
-                <div class="text-left mt-4">
-                    <p>File name: <span class="text-red-800">{{ file.name }}</span></p>
-                    <p>Size: <span class="text-red-800">{{ file.size.toLocaleString() }} bytes ({{  mb(file.size).toLocaleString() }} MB)</span></p>
-                    <p>Type: <span class="text-red-800">{{ file.type }}</span></p>
-                </div>
-            </div>
-        </transition>
+        <FileInfo :file="file" />
+
         <transition name="fade">
             <div class="mt-16 w-1/3 mx-auto" v-if="file">
-                <p class="mt-8 mb-4">Chunk Size - {{ chunkSize.toLocaleString() }} bytes ({{ mb(chunkSize).toLocaleString() }} MB)</p>
-                <input type="range" :min="chunkSizeMin" :max="chunkSizeMax" v-model="chunkSize" class="block mx-auto w-full">
-                <div class="flex justify-between w-full">
-                    <div class="text-xs">{{ chunkSizeMin.toLocaleString() }} bytes ({{  mb(chunkSizeMin).toLocaleString() }} MB)</div>
-                    <div class="text-xs">{{ chunkSizeMax.toLocaleString() }} bytes ({{ mb(chunkSizeMax).toLocaleString() }} MB)</div>
-                </div>
-                <button @click="upload" type="button" class="bg-purple-600 hover:bg-purple-800 text-white mt-12 px-6 py-2 rounded">Begin Upload (~{{ totalChunks }} chunks)</button>
+                <p class="mt-8 mb-4">Chunk Size - {{ noChunkSize ? 0 : parseFloat(chunkSize).toLocaleString() }} MB</p>
+                <input type="number" v-model="chunkSize" class="block mx-auto p-2 border border-gray-400 rounded">
+
+                <p class="mt-8 mb-4">Delay - {{ noDelay ? 0 : parseFloat(delay).toLocaleString() }} seconds</p>
+                <input type="number" v-model="delay" class="block mx-auto p-2 border border-gray-400 rounded">
+
+                <button
+                    @click="upload"
+                    :disabled="noChunkSize"
+                    type="button"
+                    class="bg-purple-600 hover:bg-purple-800 text-white mt-12 px-6 py-2 rounded"
+                    :class="{ 'opacity-50 cursor-not-allowed': noChunkSize }"
+                >
+                    Begin Upload (~{{ totalChunks }} chunk{{totalChunks === 1 ? '' : 's'}})
+                </button>
             </div>
         </transition>
 
-        <div class="flex">
-            <transition name="fade">
-                <div class="mt-16 w-1/3 mx-auto bg-gray-700 text-white rounded p-4" v-if="currentChunk.length">
-                    <h2 class="text-xl">File Contents - Chunk {{ currentChunkIndex }}</h2>
-                    <div class="text-left mt-4">
-                        <p v-for="(line, index) in currentChunk.split('\n')" :key="index">{{ line }}</p>
-                    </div>
-                </div>
-            </transition>
+        <ProgressBar :total=totalChunks :current="currentChunkIndex" v-if="currentChunk" class="mt-8" />
 
-            <transition name="fade">
-                <Monitors class="mt-16" />
-            </transition>
+        <div class="flex">
+            <FilePreview :index="currentChunkIndex" :chunk="currentChunk" />
+            <Monitors class="mt-16" />
         </div>
     </div>
 </template>
 
 <script>
- import { mb, parseFile } from '@/utils';
+ import { megabytesToBytes, mb, parseFile } from '@/utils';
+
+ import FileInfo from './FileInfo.vue'
+ import FilePreview from './FilePreview.vue'
  import Monitors from './Monitors.vue'
+ import ProgressBar from './ProgressBar.vue'
 
  export default {
      name: 'Uploader',
 
      components: {
+         FileInfo,
+         FilePreview,
          Monitors,
+         ProgressBar
      },
 
      data() {
          return {
              file: null,
-             chunkSize: 500,
+             delay: 0,
+             chunkSize: 10,
              currentChunkIndex: 0,
              currentChunk: '',
-             buffer: '',
-             chunkSizeMin: 100,
-             chunkSizeMax: 1000000000
+             buffer: ''
          }
      },
 
      computed: {
+         noChunkSize() {
+             return isNaN(parseFloat(this.chunkSize))
+         },
+
+         noDelay() {
+             return isNaN(parseFloat(this.delay))
+         },
+
          totalChunks() {
              if (!this.file) {
                  return 0
              }
 
-             return Math.ceil(this.file.size / this.chunkSize)
+             return Math.ceil(this.file.size / megabytesToBytes(this.chunkSize))
          }
      },
 
@@ -100,14 +106,14 @@
 
          upload() {
              this.reset()
-             parseFile(this.file, this.chunkSize, this.onProgress)
+             parseFile(this.file, megabytesToBytes(this.chunkSize), this.onProgress, this.delay * 1000)
          },
 
          onProgress(chunk) {
              // Below is some extra logic because we don't just want to split
              // the data into chunks, but we will actually want to manipulate
              // the contents, line by line. So, we need to make sure we split
-             // the data by line breaks.
+             // the data by line breaks, and not just number of bytes.
 
              // Check if we have anything left over from a previous chunk
              const content = this.buffer + chunk
@@ -130,12 +136,3 @@
      }
  }
 </script>
-
-<style scoped>
- .fade-enter-active, .fade-leave-active {
-     transition: opacity .5s;
- }
- .fade-enter, .fade-leave-to {
-     opacity: 0;
- }
-</style>

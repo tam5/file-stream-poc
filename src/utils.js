@@ -6,15 +6,25 @@ export function mb(bytes) {
 }
 
 /**
- * Parse a file in chunks.
+ * Convert byes to megabytes.
  */
- export function parseFile(file, chunkSize, callback) {
+export function megabytesToBytes(megabytes) {
+    return megabytes * 1024 * 1024
+}
+
+/**
+ * Parse a file in chunks.
+ *
+ * Optionally, add a delay between chunks so it is easier to see
+ * what is happening.
+ */
+ export function parseFile(file, chunkSize, callback, delay = 0) {
      const fileSize = file.size;
      let offset     = 0;
 
      const readEventHandler = (event) => {
          if (!event.target.error) {
-             offset += event.target.result.length;
+             offset += chunkSize;
 
              callback(event.target.result); // callback for handling read chunk
          } else {
@@ -27,8 +37,10 @@ export function mb(bytes) {
              return;
          }
 
-         // read the next chunk
-         chunkReaderBlock(offset, chunkSize, file);
+         setTimeout(() => {
+             // read the next chunk
+             chunkReaderBlock(offset, chunkSize, file);
+         }, delay)
      }
 
      const chunkReaderBlock = (_offset, length, _file) => {
