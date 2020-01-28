@@ -5,7 +5,7 @@
                 <div class="progress bg-pink-300 h-full rounded" :style="`width: ${percent}%;`"></div>
             </div>
 
-            <div class="text-sm flex justify-center">{{ current }}/{{ total }} chunks - {{ percent }}%</div>
+            <div class="text-sm flex justify-center">{{ summary }} - {{ percent }}%</div>
             <div class="text-sm flex justify-center">
                 Time Elapsed: ~{{ elapsedSeconds }} seconds
             </div>
@@ -20,7 +20,7 @@
 </template>
 
 <script>
- import { toHHMMSS } from '@/utils';
+ import { mb, toHHMMSS } from '@/utils';
 
  export default {
      name: 'ProgressBar',
@@ -37,6 +37,10 @@
      },
 
      computed: {
+         summary() {
+             return `${mb(this.current).toLocaleString()} MB / ${mb(this.total).toLocaleString()} MB`
+         },
+
          isDone() {
              return this.current === this.total
          },
@@ -68,13 +72,19 @@
          },
 
          total() {
-             this.initialize()
+             this.reset()
          }
      },
 
      methods: {
-         initialize() {
+         reset() {
              this.durations = []
+             this.elapsedSeconds = 0
+             this.previousTimestamp = Date.now()
+         },
+
+         initialize() {
+             this.reset()
 
              this.interval = setInterval(() => {
                  this.elapsedSeconds++;
@@ -84,10 +94,6 @@
                  }
              }, 1000)
          }
-     },
-
-     created() {
-         this.initialize()
      }
  }
 </script>
